@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RADAR SPAIN</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        .navbar {
+            background-color: #007bff;
+            padding: 10px;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar div:nth-child(1) {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar div:nth-child(2) {
+            flex: 1;
+            text-align: center;
+            font-weight: bold;
+            color: #add8e6; /* azul claro */
+        }
+
+        .navbar div:nth-child(3) {
+            flex: 1;
+            text-align: right;
+        }
+
+        #map {
+            height: calc(100vh - 50px); /* Restar la altura de la navbar */
+            width: 100%;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px; /* Mantener el padding original */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            z-index: 1000; /* Asegura que los controles estén sobre el mapa */
+            font-size: 14px; /* Mantener el tamaño de la fuente original */
+            width: 290px; /* Ajusta el ancho según el contenido */
+        }
+
+        #controls button, #time-slider {
+            margin: 0 5px;
+            flex-shrink: 0;
+        }
+
+        #time-slider-container {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            justify-content: space-between;
+            gap: 5px; /* Añadir espacio entre los elementos */
+        }
+
+        #time-slider {
+            width: 100px;
+        }
+
+        #time-label {
+            margin-left: 0px; /* Reducir margen izquierdo */
+            font-weight: bold;
+            border: none;
+            background: transparent;
+            font-size: 14px; /* Mantener el tamaño de la fuente original */
+            text-align: left;
+            flex-shrink: 0;
+            display: block; /* Asegurar que se muestre el label */
+            width: auto; /* Para que el ancho se ajuste al contenido */
+        }
+
+        select {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px; /* Mantener el tamaño de la fuente original */
+        }
+
+        button {
+            padding: 5px 10px; /* Mantener el padding original */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px; /* Mantener el tamaño de la fuente original */
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .leaflet-control-locate {
+            background-color: white;
+            background-clip: padding-box;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+            cursor: pointer;
+            font: 18px/14px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            padding: 8px;
+        }
+
+        .leaflet-control-locate.disabled {
+            background-color: #999; /* Color más oscuro para indicar que está deshabilitado */
+            cursor: not-allowed; /* Cambiar el cursor a no permitido */
+            pointer-events: none; /* Deshabilitar eventos de puntero */
+        }
+
+        .leaflet-control-locate:hover {
+            background-color: #f4f4f4;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        #frames-container {
+            display: none;
+        }
+
+        #progress-container {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #progress-text {
+            color: red;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #progress-percentage {
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>VISUALIZADOR EVENTOS</div>
+    <div>
+        <input type="file" id="file-upload" accept=".png" multiple>
+        <select id="province-select">
+            <option value="am">Almería</option>
+            <option value="co">A Coruña</option>
+            <option value="sa">Asturias</option>
+            <option value="ba">Barcelona</option>
+            <option value="cc">Cáceres</option>
+            <option value="pm">Illes Balears</option>
+            <option value="ca">Las Palmas</option>
+            <option value="ma">Madrid</option>
+            <option value="ml">Málaga</option>
+            <option value="mu">Murcia</option>
+            <option value="vd">Palencia</option>
+            <option value="se">Sevilla</option>
+            <option value="va">Valencia</option>
+            <option value="ss">Vizcaya</option>
+            <option value="za">Zaragoza</option>
+        </select>
+        <button id="load-images">Cargar Imágenes</button>
+    </div>
+    </div>
+       
+    <div id="map">  
+    </div>
+    <div id="controls">
+        <button id="play-animation" style="display: none;">▶</button>
+        <div id="time-slider-container" style="display: none;">
+            <input type="range" id="time-slider" min="0" max="10" step="1" value="0">
+            <input type="text" id="time-label" readonly>
+        </div>
+    </div>
+    <div id="progress-container">
+        <div id="progress-text">NO TE MUEVAS</div>
+        <div id="progress-percentage">0%</div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div id="frames-container"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="js/radar.js"></script>
+    <script src="js/Leaflet.ImageOverlay.Rotated.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+</html>
